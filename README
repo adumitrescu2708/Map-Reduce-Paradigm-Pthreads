@@ -1,0 +1,77 @@
+@author Dumitrescu Alexandra 333CA
+@since  Nov 2022 - Tema1 APD
+
+# Map - Reduce Paradigm
+
+# Contents
+    [1]: About the archive
+    [2]: Flow of the algorithm
+    [3]: Checking perfect powers - Binary Search Implementation
+    [4]: Other Implementation Details
+
+# About the archive
+|    (a) The archive contains in the main root the
+|        main source, Makefile and Readme
+|    (b) In the folder <./utils> there are multiple
+|        source files and headers describing functionalities
+|       |_ tema1.cpp (Main logic of the program)
+|       |
+|       |_ ./utils
+|           |_ helper.cpp & helper.h (Describes thread data structure
+|           |                           and thread function)
+|           |_ parser.cpp & parser.h (Describes input parsing methods)
+|           |_ perfect_power.cpp & perfect_power.h (Describes method for
+|                                       checking perfect powers)
+
+# Flow of the algorithm
+|     (1) Parse the input, obtain number of mappers and reducers
+|         and get the list of files that need to be processed by the mappers
+|     (2) Start all [P = nr_of_mappers + nr_of_reducers] threads     (B)
+|           (2.1)  We use a thread_id to decide wether a thread is a mapper or
+|                  a reducer
+|           (2.2)  First ids in [0:nr_of_mappers-1] will be mappers
+|                  and ids in [nr_of_mappers:P] will be reducers    (A)
+|     (3) In the thread function treat cases for mappers and reducers
+|           (3.1)  Mappers logic:
+|                   (3.1.1) We use a shared boolean value <keep_processing>
+|                   in order to announce all mappers when to stop processing
+|                   The value of this boolean will be set once all files
+|                   are processed. We keep a shared counter to tell what
+|                   was the last processed file. Once a mapper finished
+|                   processing a file, it can continue with the next available
+|                   one.
+|           (3.2) Use a barrier to make sure that mappers finish processing
+|                 before the reducers to start merging 
+|           (3.3) Reducers logic:
+|                   (3.2.1) Based on the previous list of perfect powers
+|                   computed by the mappers each reducer will be responsible
+|                   of its exponent. The formula for this exponent will be
+|                   based on the previous formulas (A) and (B):
+|                           [exponent = P - nr_of_mappers + 2]
+|                   (3.2.2) With the given list of perfect powers, compute
+|                   the merged list of powers with corresponding exponent
+|                   and then sort the list in ascending order.
+|                   (3.2.3) Count the different numbers and print the output
+|     (4) Join threads & Free allocated memory
+
+# Checking perfect powers - Binary search implementation
+|   (1) Given a number X we want to check wether X can be written in
+|       the form of X = A ^ B, for each B lower than [MAX_EXPONENT]
+|   (2) [MAX_EXPONENT] will be the number of reducers + 2
+|   (3) This way, we vary B linear from 1 to [MAX_EXPONENT]
+|       and compute a binary search for A from 1 to X
+|   (4) We stop searching when we find a power greater than the
+|       int limit.
+
+# Other Implementation Details
+|   (1) In order to remove the use of global variabls, we use a thread
+|       data structure where we store pointers to shared information
+|       between threads, allocated in main function.
+|   (2) Threads share a mutex and a barrier, mappers share a list of
+|       lists of perfect powers for each exponent found.
+|           perfect_powers[i][j][k] = mapper's i lists of perfect powers
+|                                     with exponent j
+|           This way, perfect_powers[i][j][k] was found by mapper with id
+|           i and can be written as x^j.
+|       We use a shared list of merged perfect powers, used by reducers.
+|           merged[i] = list of perfect powers of exponent i
